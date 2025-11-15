@@ -4,6 +4,8 @@
 #include <GyverBME280.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#define CE_PIN 9
+#define CSN_PIN 10
 
 // put function declarations here:
 RF24 radio(9, 10); // "создать" модуль на пинах 9 и 10 Для Уно
