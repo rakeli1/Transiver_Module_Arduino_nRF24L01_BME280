@@ -8,7 +8,7 @@
 #define CSN_PIN 10
 
 // put function declarations here:
-RF24 radio(9, 10); // "создать" модуль на пинах 9 и 10 Для Уно
+RF24 radio(CE_PIN, CSN_PIN); // "создать" модуль на пинах 9 и 10 Для Уно
 //RF24 radio(9,53); // для Меги
 GyverBME280 bme;
 
