@@ -18,13 +18,36 @@ byte counter;
 
 float dataSensor[3];
 
+enum Type
+{
+   HOME = 1, // Идентификатор датчика находящегося в доме,раскоментировать в зависимости от назначения модуля
+   OUTDOR = 2, // Идентификатор датчика находящегося на улице,раскоментировать в зависимости от назначения модуля
+};
+
+struct TX_Data
+{
+   Type type;
+  float temperature;
+  float hymidity;
+  float pressure;
+  float batttery;
+};
+
+
+TX_Data paket;
+
+
 void setup() 
 {
  Serial.begin(9600);         // открываем порт для связи с ПК
   
-  bme.begin(0x76);            // активировать датчик bme 280
+  while (!bme.begin(0x76))
+  {
+    delay(1000);
+  }
+  //bme.begin(0x76);            // активировать датчик bme 280
   radio.begin();              // активировать модуль
-  radio.setAutoAck(1);        // режим подтверждения приёма, 1 вкл 0 выкл,тест модуля без приемника - 0
+  radio.setAutoAck(0);        // режим подтверждения приёма, 1 вкл 0 выкл,тест модуля без приемника - 0
   radio.setRetries(0, 15);    // (время между попыткой достучаться, число попыток)
   radio.enableAckPayload();   // разрешить отсылку данных в ответ на входящий сигнал
   radio.setPayloadSize(32);   // размер пакета, в байтах
@@ -44,10 +67,14 @@ void setup()
 
 void loop() 
 {
-  dataSensor[0] = bme.readTemperature();
-  dataSensor[1] = bme.readHumidity();
-  dataSensor[2] = pressureToMmHg(bme.readPressure());
-  bool ok = radio.write(&dataSensor, sizeof(dataSensor));
+  while(paket.temperature == 0)        // Этот цикл решает проблему отсылки первого  пустого пакета.Пока в структуру не будут записаны данные
+  {                                                                                    // передатчик не будет отсылать пакет
+  paket.temperature = bme.readTemperature();                                 
+  paket.hymidity    = bme.readHumidity();
+  paket.pressure    = bme.readPressure();
+  }
+
+  bool ok = radio.write(&paket, sizeof(paket));
 
   Serial.println("I SENT: ");
 
@@ -58,17 +85,17 @@ void loop()
 
    // температура
   Serial.print("Temperature: ");
-  Serial.println(dataSensor[0]);
+  Serial.println(paket.temperature);
   //Serial.println(bme.readTemperature());
 
   // влажность
   Serial.print("Humidity:    ");
-  Serial.println(dataSensor[1]);
+  Serial.println(paket.hymidity);
   //Serial.println(bme.readHumidity());
 
   // давление
   Serial.print("Pressure:    ");
-  Serial.println(dataSensor[2]);
+  Serial.println(pressureToMmHg(paket.pressure));
   //Serial.println(pressureToMmHg(bme.readPressure()));
   
 
