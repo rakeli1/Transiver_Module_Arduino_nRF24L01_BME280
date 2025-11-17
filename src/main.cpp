@@ -4,6 +4,7 @@
 #include <GyverBME280.h>
 #include <nRF24L01.h>
 #include <RF24.h>
+#include "LowPower.h"
 #define CE_PIN 9
 #define CSN_PIN 10
 
@@ -36,6 +37,16 @@ struct TX_Data
 
 TX_Data paket;
 
+void arduinoSleep30min()
+{
+  
+  for(int a = 0; a < 10; a++)
+  {
+    LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+  }
+}
+
+
 
 void setup() 
 {
@@ -63,20 +74,29 @@ void setup()
 
 void loop() 
 {
-  while(paket.temperature == 0)        // Этот цикл решает проблему отсылки первого  пустого пакета.Пока в структуру не будут записаны данные
-  {                                                                                    // передатчик не будет отсылать пакет
-  paket.temperature = bme.readTemperature();                                 
-  paket.hymidity    = bme.readHumidity();
-  paket.pressure    = bme.readPressure();
-  }
+  arduinoSleep30min();
+  delay(1000);
+  bme.setMode(FORCED_MODE);  // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
+  delay(10);
 
+  //while (paket.temperature == 0)
+  
+    paket.temperature = bme.readTemperature();                                 
+    paket.hymidity    = bme.readHumidity();
+    paket.pressure    = bme.readPressure();
+  
+  
+  radio.powerUp();                   // выводим радиомодуль из спящего режима
+  delay(5);
   bool ok = radio.write(&paket, sizeof(paket));
+  delay(5);
+  radio.powerDown();                 //переводим радиомодуль в спящий режим
 
   Serial.println("I SENT: ");
 
   Serial.print("Sent: ");
   Serial.println(counter);
-  radio.write(&counter, sizeof(counter));
+  //radio.write(&counter, sizeof(counter)); //ОБРАТИТЬ ПРИСТАЛЬНОЕ ВНИМАНИЕ ПРИ РАЗРАБОТКЕ ПРИЕМНИКА
   counter++;
 
    // температура
@@ -105,7 +125,11 @@ void loop()
                                       //модуль ждет подтверждения приема при 1, при 0 - не ждет подтверждения
   }
 
+
+  
   Serial.println();
-  delay(5000);
+
+  
+  delay(1000);
 }
 
