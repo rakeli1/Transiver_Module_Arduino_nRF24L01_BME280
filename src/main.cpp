@@ -75,7 +75,7 @@ void setup()
 void loop() 
 {
   arduinoSleep30min();
-  delay(1000);
+  delay(000);
   bme.setMode(FORCED_MODE);  // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
   delay(10);
 
@@ -129,7 +129,7 @@ void loop()
   
   Serial.println();
 
+  delay(3000);
   
-  delay(1000);
 }
 
