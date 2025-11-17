@@ -17,8 +17,6 @@ byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //в
 
 byte counter;
 
-float dataSensor[3];
-
 enum Type
 {
    HOME = 1, // Идентификатор датчика находящегося в доме,раскоментировать в зависимости от назначения модуля
@@ -39,7 +37,6 @@ TX_Data paket;
 
 void arduinoSleep30min()
 {
-  
   for(int a = 0; a < 10; a++)
   {
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
@@ -78,8 +75,7 @@ void loop()
   delay(000);
   bme.setMode(FORCED_MODE);  // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
   delay(10);
-
-  //while (paket.temperature == 0)
+  
   
     paket.temperature = bme.readTemperature();                                 
     paket.hymidity    = bme.readHumidity();
