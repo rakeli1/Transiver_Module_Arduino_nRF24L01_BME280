@@ -35,16 +35,16 @@ struct TX_Data
 
 TX_Data paket;
 
-void arduinoSleep30min()
+void arduinoSleep30min()      // функция усыпляющая ардуинку
 {
-  for(int a = 0; a < 10; a++)
+  for(int a = 0; a < 8; a++)
   {
     LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
   }
 }
 
-
-
+bool firstStart = true;       // переменная которая в операторе "if(firstStart)" выполняет условие первого запуска после подачи питания без засыпания
+                                                                                // Ардуинки
 void setup() 
 {
  Serial.begin(9600);          // открываем порт для связи с ПК
@@ -64,68 +64,71 @@ void setup()
   //должна быть одинакова на приёмнике и передатчике!
   //при самой низкой скорости имеем самую высокую чувствительность и дальность!!
 
-  radio.powerUp();        // начать работу
-  radio.stopListening();  // не слушаем радиоэфир, мы передатчик 
+  radio.powerUp();                                       // начать работу радиопередатчика
+  radio.stopListening();                                 // не слушаем радиоэфир, мы передатчик 
 
 }
 
 void loop() 
 {
-  arduinoSleep30min();
-  delay(1000);
-  bme.setMode(FORCED_MODE);  // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
+  if(!firstStart)                                        // этим кодом мы при первом запуске пропускаем сон чтобы показания датчика на приемнике выводились сразу без ожидания окончания периода сна
+  {
+    arduinoSleep30min();
+  }
+
+  bme.setMode(FORCED_MODE);                              // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
   delay(10);
+   
+    paket.temperature = bme.readTemperature();           //чтение температуры и запись в структуру                               
+    paket.hymidity    = bme.readHumidity();              //чтение влажности и запись в структуру
+    paket.pressure    = bme.readPressure();              //чтение давления и запись в структуру
+   
   
-  
-    paket.temperature = bme.readTemperature();                                 
-    paket.hymidity    = bme.readHumidity();
-    paket.pressure    = bme.readPressure();
-  
-  
-  radio.powerUp();                   // выводим радиомодуль из спящего режима
+  radio.powerUp();                                       // выводим радиомодуль из спящего режима
   delay(5);
-  bool ok = radio.write(&paket, sizeof(paket));
+  bool ok = radio.write(&paket, sizeof(paket));          // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
   delay(5);
-  radio.powerDown();                 //переводим радиомодуль в спящий режим
+  radio.powerDown();                                     //переводим радиомодуль в спящий режим
 
-  Serial.println("I SENT: ");
+  Serial.println("I SENT: ");                            // ОТЛАДКА
 
-  Serial.print("Sent: ");
+  Serial.print("Sent: ");                                // ОТЛАДКА
   Serial.println(counter);
-  //radio.write(&counter, sizeof(counter)); //ОБРАТИТЬ ПРИСТАЛЬНОЕ ВНИМАНИЕ ПРИ РАЗРАБОТКЕ ПРИЕМНИКА
-  counter++;
+  //radio.write(&counter, sizeof(counter));              //ОБРАТИТЬ ПРИСТАЛЬНОЕ ВНИМАНИЕ ПРИ РАЗРАБОТКЕ ПРИЕМНИКА  // ОТЛАДКА
+  counter++;                                             // ОТЛАДКА
 
    // температура
-  Serial.print("Temperature: ");
-  Serial.println(paket.temperature);
-  //Serial.println(bme.readTemperature());
+  Serial.print("Temperature: ");                         // ОТЛАДКА
+  Serial.println(paket.temperature);                     // ОТЛАДКА
+  //Serial.println(bme.readTemperature());               // ОТЛАДКА
 
   // влажность
-  Serial.print("Humidity:    ");
-  Serial.println(paket.hymidity);
-  //Serial.println(bme.readHumidity());
+  Serial.print("Humidity:    ");                         // ОТЛАДКА
+  Serial.println(paket.hymidity);                        // ОТЛАДКА 
+  //Serial.println(bme.readHumidity());                  // ОТЛАДКА
 
   // давление
-  Serial.print("Pressure:    ");
-  Serial.println(pressureToMmHg(paket.pressure));
-  //Serial.println(pressureToMmHg(bme.readPressure()));
+  Serial.print("Pressure:    ");        // ОТЛАДКА 
+  Serial.println(pressureToMmHg(paket.pressure));        // ОТЛАДКА
+  //Serial.println(pressureToMmHg(bme.readPressure()));  // ОТЛАДКА
   
 
-  if (ok)
-  {
-    Serial.println("Sent sucsses!");
-  }
-   else
-  {
-    Serial.println("Error of sending");// проверить метод setAutuAsk(1),тест без приемника-0, с приемником-1;
-                                      //модуль ждет подтверждения приема при 1, при 0 - не ждет подтверждения
-  }
+  if (ok)                                  // ОТЛАДКА
+  {                                        // ОТЛАДКА
+    Serial.println("Sent sucsses!");       // ОТЛАДКА
+  }                                        // ОТЛАДКА
+   else                                    // ОТЛАДКА
+  {                                        // ОТЛАДКА
+    Serial.println("Error of sending");// проверить метод setAutuAsk(1),тест без приемника-0, с приемником-1; // ОТЛАДКА
+                                      //модуль ждет подтверждения приема при 1, при 0 - не ждет подтверждения // ОТЛАДКА
+  }                                                                                                           // ОТЛАДКА
 
 
   
-  Serial.println();
+  Serial.println();                                                                                           // ОТЛАДКА
+  delay(1000);
 
-  delay(3000);
+  firstStart = false;     // эта переменная обеспечивает запуск спящего режима при следующем цикле "loop"
   
 }
 
