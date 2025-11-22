@@ -26,8 +26,7 @@ RF24 radio(CE_PIN, CSN_PIN); // "создать" модуль на пинах 9 
 GyverBME280 bme;
 
 byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //возможные номера труб
-
-byte counter;     // ОТЛАДКА
+    
 
 enum Type
 {
@@ -35,20 +34,9 @@ enum Type
    OUTDOOR = 2, // Идентификатор радиопередатчика находящегося на улице
 };
 
-struct TX_Data
-{
-  Type type;
-  float temperature;
-  float hymidity;
-  float pressure;
-  int percentbatery;
-  int adc;             // ОТЛАДКА значение АЦП
-  float va0;           // ОТЛАДКА значение напряжения на пине А0
-  float vbat;           // ОТЛАДКА значение напряжения на батарее(расчетное)
-};
+float tx_data[8];
 
 
-TX_Data paket;
 
 void arduinoSleep30min()      // функция усыпляющая ардуинку в данном случае сон на 64 сек. в рабочей версии будет 30 мин.
 {
@@ -77,7 +65,7 @@ void setup()
   radio.openWritingPipe(address[0]);  // мы - труба 0, открываем канал для передачи данных
   radio.setChannel(0x60);             // выбираем канал (в котором нет шумов!)
 
-  radio.setPALevel (RF24_PA_MAX);   // уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
+  radio.setPALevel (RF24_PA_LOW);   // уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
   radio.setDataRate (RF24_250KBPS); // скорость обмена. На выбор RF24_2MBPS, RF24_1MBPS, RF24_250KBPS
   //должна быть одинакова на приёмнике и передатчике!
   //при самой низкой скорости имеем самую высокую чувствительность и дальность!!
@@ -91,10 +79,10 @@ void loop()
 {
   if(!firstStart)                                        // этим кодом мы при первом запуске пропускаем сон чтобы показания датчика на приемнике выводились сразу без ожидания окончания периода сна
   {
-    arduinoSleep30min();
+    //arduinoSleep30min();
   }
 
-  int adc = 0;                           //число формируемое АЦП 
+  float adc = 0;                           //число формируемое АЦП 
   
   for(int sempl = 0; sempl < 20; ++sempl) // цикл для  усреднения значения АЦП
   {
@@ -102,77 +90,83 @@ void loop()
       delayMicroseconds(50);
   }
   adc /= 20;                                       // уреднение значения АЦП
-  Va0 = adc * (INREF / 1024);                      // вычисление напряжения на пине А0 
+  Va0 = (adc * (INREF / 1024)) / 1.022;  // 1.022 это калибровочный коефицент разница между реальным и расчетным напряжением                   // вычисление напряжения на пине А0 
   Vbat = (adc * (INREF / 1024)) * RATIO;           // вычисление напряжения на батарее
-  int percent = ((Vbat - VMIN) / (VMAX - VMIN)) * 100; // вычисление процента зарядки батареи
+  float percent = ((Vbat - VMIN) / (VMAX - VMIN)) * 100; // вычисление процента зарядки батареи
   if (percent > 100) percent = 100;
   if (percent < 0) percent = 0;
+
+  
   
 
   bme.setMode(FORCED_MODE);                              // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
   delay(10);
    
     
-    paket.type               = OUTDOOR;                         // идентификатор местоположения радиомодуля
-    paket.temperature        = bme.readTemperature();           //чтение температуры и запись в структуру                               
-    paket.hymidity           = bme.readHumidity();              //чтение влажности и запись в структуру
-    paket.pressure           = bme.readPressure();              //чтение давления и запись в структуру
-    paket.percentbatery      = percent;                         // процент заряда батареи
-    paket.adc                = adc;                  // ОТЛАДКА значение АЦП
-    paket.va0                = Va0;                  // ОТЛАДКА напяжение на пине А0
-    paket.vbat               = Vbat;                 // ОТЛАДКА напряжение на батарее(расчетное)
+    tx_data[0] = 1;                         // идентификатор местоположения радиомодуля
+    tx_data[1] = bme.readTemperature();           //чтение температуры и запись в структуру                               
+    tx_data[2] = bme.readHumidity();              //чтение влажности и запись в структуру
+    tx_data[3] = bme.readPressure();             //чтение давления и запись в структуру
+    tx_data[4] = percent;                         // процент заряда батареи
+    tx_data[5] = adc;                  // ОТЛАДКА значение АЦП
+    tx_data[6] = Va0;                  // ОТЛАДКА напяжение на пине А0
+    tx_data[7] = Vbat;                 // ОТЛАДКА напряжение на батарее(расчетное)
     
+    
+   
     
     radio.powerUp();                                       // выводим радиомодуль из спящего режима
   delay(5);
-  bool ok = radio.write(&paket, sizeof(paket));          // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
+  bool ok = radio.write(tx_data, sizeof(tx_data));          // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
   delay(5);
-  radio.powerDown();                                     //переводим радиомодуль в спящий режим
+  //radio.powerDown();                                     //переводим радиомодуль в спящий режим
 
   Serial.println("I SENT: ");                            // ОТЛАДКА
   
-  
+  int counter = 0;
 
   Serial.print("Sent: ");                                // ОТЛАДКА
   Serial.println(counter);                               // ОТЛАДКА
   //radio.write(&counter, sizeof(counter));              //ОБРАТИТЬ ПРИСТАЛЬНОЕ ВНИМАНИЕ ПРИ РАЗРАБОТКЕ ПРИЕМНИКА  // ОТЛАДКА
-  counter++;                                             // ОТЛАДКА
+  //counter++;                                             // ОТЛАДКА
 
    // температура
   Serial.print("Temperature: ");                         // ОТЛАДКА
-  Serial.println(paket.temperature);                     // ОТЛАДКА
+  Serial.println(tx_data[1]);                     // ОТЛАДКА
   //Serial.println(bme.readTemperature());               // ОТЛАДКА
 
   // влажность
   Serial.print("Humidity:    ");                         // ОТЛАДКА
-  Serial.println(paket.hymidity);                        // ОТЛАДКА 
+  Serial.println(tx_data[2]);                        // ОТЛАДКА 
   //Serial.println(bme.readHumidity());                  // ОТЛАДКА
 
   // давление
   Serial.print("Pressure:    ");        // ОТЛАДКА 
-  Serial.println(pressureToMmHg(paket.pressure));        // ОТЛАДКА
+  Serial.println(pressureToMmHg(tx_data[3]));        // ОТЛАДКА
   //Serial.println(pressureToMmHg(bme.readPressure()));  // ОТЛАДКА
 
   Serial.println();
 
   Serial.print("Значение АЦП           ");
-  Serial.println(paket.adc);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
+  Serial.println(tx_data[5]);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
 
   // Напряжение на батарее
   Serial.print("Напряжение на батарее  ");
-  Serial.println(paket.vbat);
+  Serial.println(tx_data[7]);
 
   // Напряжение на пине А0
   Serial.print("Напряжение на пине A0  ");
-  Serial.println(paket.va0);
+  Serial.println(tx_data[6]);
 
   // Процент заряда батареи
   Serial.print("Процент заряда батареи ");
-  Serial.println(paket.percentbatery);
+  Serial.println(tx_data[4]);
+
+  Serial.println(sizeof(tx_data));
   Serial.println();
   
 
-  if (ok)                                  // ОТЛАДКА
+  if (ok)                                  // ОТЛАДКА. 
   {                                        // ОТЛАДКА
     Serial.println("Sent sucsses!");       // ОТЛАДКА
   }                                        // ОТЛАДКА
@@ -183,7 +177,7 @@ void loop()
   }                                                                                                           // ОТЛАДКА
 
   Serial.println();                                                                                           // ОТЛАДКА
-  delay(1000);
+  delay(3000);
 
   firstStart = false;     // эта переменная обеспечивает запуск спящего режима при следующем цикле "loop"
   
