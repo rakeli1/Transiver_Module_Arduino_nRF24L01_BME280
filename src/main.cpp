@@ -42,9 +42,9 @@ struct TX_Data
   float hymidity;
   float pressure;
   int percentbatery;
-  int adc;             // ОТЛАДКА
-  float va0;           // ОТЛАДКА
-  float vbat;           // ОТЛАДКА
+  int adc;             // ОТЛАДКА значение АЦП
+  float va0;           // ОТЛАДКА значение напряжения на пине А0
+  float vbat;           // ОТЛАДКА значение напряжения на батарее(расчетное)
 };
 
 
