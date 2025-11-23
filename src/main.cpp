@@ -8,7 +8,7 @@
 #define CE_PIN 9
 #define CSN_PIN 10
 
- const int BATPIN = A0;              // Определение пина А0 для входа от делителя батарейного напряжения 
+ const float BATPIN = A0;              // Определение пина А0 для входа от делителя батарейного напряжения 
  const float INREF = 1.1f;           // внутреннее опорное напряжение подключается функцией analogReference(INTERNAL);
  const float R1 = 3;                 // R1 - подключен м-у Vbat и пином A0 
  const float R2 = 1;                 // R2 - покдключен м-у GND
@@ -30,12 +30,19 @@ byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //в
 
 enum Type
 {
-   HOME = 1, // Идентификатор радиопередатчика находящегося в домет 
-   OUTDOOR = 2, // Идентификатор радиопередатчика находящегося на улице
+  ID,
+  TEMPERATURE,
+  HUMIDITY,
+  PRESSURE,
+  PERCENT,
+  ADCFL,
+  VA0,
+  VBAT,
+  COUNER,
+   
 };
 
 float tx_data[8];
-
 
 
 void arduinoSleep30min()      // функция усыпляющая ардуинку в данном случае сон на 64 сек. в рабочей версии будет 30 мин.
@@ -79,17 +86,18 @@ void loop()
 {
   if(!firstStart)                                        // этим кодом мы при первом запуске пропускаем сон чтобы показания датчика на приемнике выводились сразу без ожидания окончания периода сна
   {
-    //arduinoSleep30min();
+    arduinoSleep30min();
   }
 
-  float adc = 0;                           //число формируемое АЦП 
+  int adc = 0;                           //число формируемое АЦП 
   
   for(int sempl = 0; sempl < 20; ++sempl) // цикл для  усреднения значения АЦП
   {
      adc += analogRead(BATPIN);
       delayMicroseconds(50);
   }
-  adc /= 20;                                       // уреднение значения АЦП
+  adc /= 20;
+  float adcfl = (float)adc;                                       // уреднение значения АЦП
   Va0 = (adc * (INREF / 1024)) / 1.022;  // 1.022 это калибровочный коефицент разница между реальным и расчетным напряжением                   // вычисление напряжения на пине А0 
   Vbat = (adc * (INREF / 1024)) * RATIO;           // вычисление напряжения на батарее
   float percent = ((Vbat - VMIN) / (VMAX - VMIN)) * 100; // вычисление процента зарядки батареи
@@ -103,66 +111,59 @@ void loop()
   delay(10);
    
     
-    tx_data[0] = 1;                         // идентификатор местоположения радиомодуля
-    tx_data[1] = bme.readTemperature();           //чтение температуры и запись в структуру                               
-    tx_data[2] = bme.readHumidity();              //чтение влажности и запись в структуру
-    tx_data[3] = bme.readPressure();             //чтение давления и запись в структуру
-    tx_data[4] = percent;                         // процент заряда батареи
-    tx_data[5] = adc;                  // ОТЛАДКА значение АЦП
-    tx_data[6] = Va0;                  // ОТЛАДКА напяжение на пине А0
-    tx_data[7] = Vbat;                 // ОТЛАДКА напряжение на батарее(расчетное)
-    
+    tx_data[ID] = 1.0;                         // идентификатор местоположения радиомодуля
+    tx_data[TEMPERATURE] = bme.readTemperature();           //чтение температуры и запись в структуру                               
+    tx_data[HUMIDITY] = bme.readHumidity();              //чтение влажности и запись в структуру
+    tx_data[PRESSURE] = pressureToMmHg((bme.readPressure())); //чтение давления и запись в структуру
+    tx_data[PERCENT] = percent;                         // процент заряда батареи
+    tx_data[ADCFL] = adcfl;                  // ОТЛАДКА значение АЦП
+    tx_data[VA0] = Va0;                  // ОТЛАДКА напяжение на пине А0
+    tx_data[VBAT] = Vbat;                 // ОТЛАДКА напряжение на батарее(расчетное)
+  
     
    
     
     radio.powerUp();                                       // выводим радиомодуль из спящего режима
   delay(5);
-  bool ok = radio.write(tx_data, sizeof(tx_data));          // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
+  bool ok = radio.write(&tx_data, sizeof(tx_data));          // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
   delay(5);
-  //radio.powerDown();                                     //переводим радиомодуль в спящий режим
-
+  radio.powerDown();                                     //переводим радиомодуль в спящий режим
   Serial.println("I SENT: ");                            // ОТЛАДКА
   
-  int counter = 0;
-
-  Serial.print("Sent: ");                                // ОТЛАДКА
-  Serial.println(counter);                               // ОТЛАДКА
-  //radio.write(&counter, sizeof(counter));              //ОБРАТИТЬ ПРИСТАЛЬНОЕ ВНИМАНИЕ ПРИ РАЗРАБОТКЕ ПРИЕМНИКА  // ОТЛАДКА
-  //counter++;                                             // ОТЛАДКА
+  Serial.print("Sent: ");                                // ОТЛАДКА                               // ОТЛАДКА
+  
 
    // температура
   Serial.print("Temperature: ");                         // ОТЛАДКА
-  Serial.println(tx_data[1]);                     // ОТЛАДКА
-  //Serial.println(bme.readTemperature());               // ОТЛАДКА
+  Serial.println(tx_data[TEMPERATURE]);                     // ОТЛАДКА
+            
 
   // влажность
   Serial.print("Humidity:    ");                         // ОТЛАДКА
-  Serial.println(tx_data[2]);                        // ОТЛАДКА 
-  //Serial.println(bme.readHumidity());                  // ОТЛАДКА
+  Serial.println(tx_data[HUMIDITY]);                        // ОТЛАДКА 
+  
 
   // давление
   Serial.print("Pressure:    ");        // ОТЛАДКА 
-  Serial.println(pressureToMmHg(tx_data[3]));        // ОТЛАДКА
-  //Serial.println(pressureToMmHg(bme.readPressure()));  // ОТЛАДКА
+  Serial.println(tx_data[PRESSURE]);        // ОТЛАДКА
 
   Serial.println();
 
   Serial.print("Значение АЦП           ");
-  Serial.println(tx_data[5]);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
+  Serial.println(tx_data[ADCFL]);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
 
   // Напряжение на батарее
   Serial.print("Напряжение на батарее  ");
-  Serial.println(tx_data[7]);
+  Serial.println(tx_data[VBAT]);
 
   // Напряжение на пине А0
   Serial.print("Напряжение на пине A0  ");
-  Serial.println(tx_data[6]);
+  Serial.println(tx_data[VA0]);
 
   // Процент заряда батареи
   Serial.print("Процент заряда батареи ");
-  Serial.println(tx_data[4]);
+  Serial.println(tx_data[PERCENT]);
 
-  Serial.println(sizeof(tx_data));
   Serial.println();
   
 
