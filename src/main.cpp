@@ -9,7 +9,7 @@
 #define CSN_PIN 10
 #define DEBUG 1          // 1 включить отладочный код, помечен ОТЛАДКА 0 отключить 
 
- const float BATPIN = A0;              // Определение пина А0 для входа от делителя батарейного напряжения 
+ const float BATPIN = A0;            // Определение пина А0 для входа от делителя батарейного напряжения 
  const float INREF = 1.1f;           // внутреннее опорное напряжение подключается функцией analogReference(INTERNAL);
  const float R1 = 3;                 // R1 - подключен м-у Vbat и пином A0 
  const float R2 = 1;                 // R2 - покдключен м-у GND
