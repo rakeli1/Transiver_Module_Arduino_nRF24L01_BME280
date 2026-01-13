@@ -56,9 +56,9 @@ bool firstStart = true;       // переменная которая в опер
                                                                                 // Ардуинки
 void setup() 
 {
-  #if DEBUG
+  
   Serial.begin(9600);         // открываем порт для связи с ПК/
-  #endif
+
   analogReference(INTERNAL); // подключение к внутреннему опорному напряжению 1,1В, на пин А0
                             // подключать напряжение не более 1,1В ВАЖНО!!!!!
   bme.begin(0x76);            // активируем датчик BME280 
@@ -102,13 +102,14 @@ void loop()
   if (percent > 100) percent = 100;
   if (percent < 0) percent = 0;
 
-  //bme.setMode(FORCED_MODE);              // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
-  //delay(10);
+  bme.setMode(FORCED_MODE);              // после измерения датчик сам уходит в сон это режим поведения на уровне датчика
+  delay(10);
    
     
-    tx_data[ID] = 1.0;                         // идентификатор местоположения радиомодуля
+    tx_data[ID] = 1.0;                                      // идентификатор местоположения радиомодуля
+
+    tx_data[HUMIDITY] = bme.readHumidity();                  //чтение влажности и запись в структуру     
     tx_data[TEMPERATURE] = bme.readTemperature();           //чтение температуры и запись в структуру                               
-    tx_data[HUMIDITY] = bme.readHumidity();              //чтение влажности и запись в структуру
     tx_data[PRESSURE] = pressureToMmHg((bme.readPressure())); //чтение давления и запись в структуру
     tx_data[PERCENT] = percent;                         // процент заряда батареи
     tx_data[ADCFL] = adcfl;                  // ОТЛАДКА значение АЦП
@@ -116,69 +117,72 @@ void loop()
     tx_data[VBAT] = Vbat;                 // ОТЛАДКА напряжение на батарее(расчетное)
   
     
+  
+
+  Serial.println("TEMPERATURE BEFORE SENDING");
+  Serial.println(tx_data[TEMPERATURE]);
   radio.powerUp();                                       // выводим радиомодуль из спящего режима
-  delay(5);
-  bool ok = radio.write(&tx_data, sizeof(tx_data));      // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
+  delay(15);
+  radio.write(&tx_data, sizeof(tx_data));      // отсылка данных в эфир, Переменная ок - отладочная(узнаем успешность отсылки данных)
   
-  delay(5);
-  radio.powerDown();                                    //переводим радиомодуль в спящий режим
+  //delay(5);
+  //radio.powerDown();                                    //переводим радиомодуль в спящий режим
   
-  #if DEBUG
-  Serial.println("I SENT: ");                            // ОТЛАДКА
   
-  Serial.print("Sent: ");                                // ОТЛАДКА                               // ОТЛАДКА
-  Serial.println(counter);
-  counter++;
+  //Serial.println("I SENT: ");                            // ОТЛАДКА
+  
+  //Serial.print("Sent: ");                                // ОТЛАДКА                               // ОТЛАДКА
+ // Serial.println(counter);
+  //counter++;
    
   // температура
-  Serial.print("Temperature: ");                         // ОТЛАДКА
-  Serial.println(tx_data[TEMPERATURE]);                     // ОТЛАДКА
+  //Serial.print("Temperature: ");                         // ОТЛАДКА
+ // Serial.println(tx_data[TEMPERATURE]);                     // ОТЛАДКА
             
 
   // влажность
-  Serial.print("Humidity:    ");                         // ОТЛАДКА
-  Serial.println(tx_data[HUMIDITY]);                        // ОТЛАДКА 
+  //Serial.print("Humidity:    ");                         // ОТЛАДКА
+  //Serial.println(tx_data[HUMIDITY]);                        // ОТЛАДКА 
   
 
   // давление
-  Serial.print("Pressure:    ");        // ОТЛАДКА 
-  Serial.println(tx_data[PRESSURE]);        // ОТЛАДКА
+  //Serial.print("Pressure:    ");        // ОТЛАДКА 
+  //Serial.println(tx_data[PRESSURE]);        // ОТЛАДКА
 
-  Serial.println();
+ // Serial.println();
 
-  Serial.print("Значение АЦП           ");
-  Serial.println(tx_data[ADCFL]);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
+ // Serial.print("Значение АЦП           ");
+ // Serial.println(tx_data[ADCFL]);   //подключить конденсатор паралельно нижнему резистору 0.01-0.1мкФ
 
   // Напряжение на батарее
-  Serial.print("Напряжение на батарее  ");
-  Serial.println(tx_data[VBAT]);
+ // Serial.print("Напряжение на батарее  ");
+  //Serial.println(tx_data[VBAT]);
 
   // Напряжение на пине А0
-  Serial.print("Напряжение на пине A0  ");
-  Serial.println(tx_data[VA0]);
+ // Serial.print("Напряжение на пине A0  ");
+ // Serial.println(tx_data[VA0]);
 
   // Процент заряда батареи
-  Serial.print("Процент заряда батареи ");
-  Serial.println(tx_data[PERCENT]);
+ // Serial.print("Процент заряда батареи ");
+ // Serial.println(tx_data[PERCENT]);
 
-  Serial.println();
+ // Serial.println();
   
 
-  if (ok)                                  // ОТЛАДКА. 
-  {                                        // ОТЛАДКА
-    Serial.println("Sent sucsses!");       // ОТЛАДКА
-  }                                        // ОТЛАДКА
-   else                                    // ОТЛАДКА
-  {                                        // ОТЛАДКА
-    Serial.println("Error of sending");// проверить метод setAutuAsk(1),тест без приемника-0, с приемником-1; // ОТЛАДКА
+ // if (ok)                                  // ОТЛАДКА. 
+ // {                                        // ОТЛАДКА
+   // Serial.println("Sent sucsses!");       // ОТЛАДКА
+ // }                                        // ОТЛАДКА
+ //  else                                    // ОТЛАДКА
+ // {                                        // ОТЛАДКА
+  //  Serial.println("Error of sending");// проверить метод setAutuAsk(1),тест без приемника-0, с приемником-1; // ОТЛАДКА
                                       //модуль ждет подтверждения приема при 1, при 0 - не ждет подтверждения // ОТЛАДКА
-  }                                                                                                           // ОТЛАДКА
+ // }                                                                                                           // ОТЛАДКА
 
-  Serial.println();                                                                                           // ОТЛАДКА
+  //Serial.println();                                                                                           // ОТЛАДКА
   delay(3000);
-  #else
-  delay(5);
-  #endif
+  
+
   firstStart = false;     // эта переменная обеспечивает запуск спящего режима при следующем цикле "loop"
   
 }
